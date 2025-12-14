@@ -3,17 +3,17 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>发布新帖子 - 静态API论坛</title>
+    <title>发布新帖子 - 内部技术论坛</title>
     <link rel="stylesheet" href="css/style.css">
     <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
 </head>
 <body>
     <nav class="navbar">
-        <a href="index.html" class="logo">API论坛</a>
+        <a href="index.html" class="logo">内部技术论坛</a>
         <div class="nav-links">
             <a href="index.html" class="nav-link">返回首页</a>
-            <div class="user-info" id="userInfo">
-                <a href="login.html" class="nav-link">登录/注册</a>
+            <div class="user-info">
+                <span>内部使用</span>
             </div>
         </div>
     </nav>
@@ -22,11 +22,19 @@
         <div class="card" style="max-width: 800px; margin: 2rem auto;">
             <h2>发布新帖子</h2>
             
+            <!-- 发帖人姓名 -->
             <div class="form-group">
-                <label class="form-label">标题</label>
-                <input type="text" id="postTitle" class="form-input" placeholder="请输入帖子标题">
+                <label class="form-label">你的名字</label>
+                <input type="text" id="authorName" class="form-input" placeholder="请输入您的姓名或昵称" required>
             </div>
             
+            <!-- 帖子标题 -->
+            <div class="form-group">
+                <label class="form-label">标题</label>
+                <input type="text" id="postTitle" class="form-input" placeholder="请输入帖子标题" required>
+            </div>
+            
+            <!-- 帖子分类 -->
             <div class="form-group">
                 <label class="form-label">分类</label>
                 <select id="postCategory" class="form-input">
@@ -37,12 +45,10 @@
                 </select>
             </div>
             
+            <!-- 帖子内容 -->
             <div class="form-group">
                 <label class="form-label">内容</label>
-                <textarea id="postContent" class="form-input" placeholder="请输入帖子内容（支持Markdown格式）"></textarea>
-                <p style="font-size: 0.9rem; color: #718096; margin-top: 0.5rem;">
-                    提示：您可以使用 **粗体**、*斜体*、[链接](http://example.com) 等Markdown格式
-                </p>
+                <textarea id="postContent" class="form-input" placeholder="请输入帖子内容..." rows="6" required></textarea>
             </div>
             
             <div style="display: flex; gap: 1rem;">
@@ -56,54 +62,35 @@
 
     <!-- 脚本 -->
     <script src="js/supabase.js"></script>
-    <script src="js/auth.js"></script>
-    <script src="js/forum.js"></script>
+    <script src="js/forum.js"></script> <!-- 注意：不再引入 auth.js -->
     
     <script>
-        document.addEventListener('DOMContentLoaded', async function() {
-            // 检查用户登录状态
-            const user = await checkAuth();
-            
-            if (!user) {
-                showMessage('请先登录才能发布帖子', 'error');
-                document.getElementById('submitPost').disabled = true;
-                setTimeout(() => {
-                    window.location.href = 'login.html';
-                }, 2000);
-                return;
-            }
-            
-            // 提交帖子事件
+        document.addEventListener('DOMContentLoaded', function() {
             document.getElementById('submitPost').addEventListener('click', async function() {
+                // 1. 获取表单数据
+                const authorName = document.getElementById('authorName').value.trim();
                 const title = document.getElementById('postTitle').value.trim();
                 const content = document.getElementById('postContent').value.trim();
                 const category = document.getElementById('postCategory').value;
                 
-                if (!title || !content) {
-                    showMessage('请填写标题和内容', 'error');
+                // 2. 简单验证
+                if (!authorName || !title || !content) {
+                    showMessage('请填写姓名、标题和内容', 'error');
                     return;
                 }
                 
-                if (title.length < 3) {
-                    showMessage('标题至少需要3个字符', 'error');
-                    return;
-                }
-                
-                if (content.length < 10) {
-                    showMessage('内容至少需要10个字符', 'error');
-                    return;
-                }
-                
-                // 禁用按钮防止重复提交
+                // 3. 禁用按钮防止重复提交
                 this.disabled = true;
                 this.textContent = '发布中...';
                 
-                const result = await createPost(title, content, category);
+                // 4. 调用新的简化发帖函数
+                const result = await createPostSimple(title, content, category, authorName);
                 
+                // 5. 处理结果
                 if (result.success) {
                     showMessage('帖子发布成功！正在跳转...', 'success');
                     setTimeout(() => {
-                        window.location.href = `topic.html?id=${result.post.id}`;
+                        window.location.href = 'index.html';
                     }, 1500);
                 } else {
                     showMessage(`发布失败: ${result.error}`, 'error');
@@ -119,7 +106,6 @@
             messageDiv.style.display = 'block';
             messageDiv.style.backgroundColor = type === 'success' ? '#d4edda' : '#f8d7da';
             messageDiv.style.color = type === 'success' ? '#155724' : '#721c24';
-            messageDiv.style.border = type === 'success' ? '1px solid #c3e6cb' : '1px solid #f5c6cb';
         }
     </script>
 </body>
