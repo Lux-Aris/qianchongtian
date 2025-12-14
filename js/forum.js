@@ -1,4 +1,4 @@
-// 论坛核心功能
+// 论坛核心功能 - 简化版（无需登录）
 
 // 加载帖子
 async function loadPosts(category = null) {
@@ -8,12 +8,9 @@ async function loadPosts(category = null) {
     postsListDiv.innerHTML = '<div class="spinner"></div><p>正在加载帖子...</p>';
     
     try {
-        let query = supabaseClient
+        let query = window.supabaseClient
             .from('posts')
-            .select(`
-                *,
-                profiles:user_id (username)
-            `)
+            .select('*') // 直接选择所有字段，不再关联用户表
             .order('created_at', { ascending: false });
             
         if (category) {
@@ -46,16 +43,14 @@ function renderPosts(posts) {
         const postElement = document.createElement('div');
         postElement.className = 'post-item card';
         
-        const authorName = post.profiles?.username || '匿名用户';
+        const authorName = post.author_name || '匿名用户'; // 直接使用 author_name 字段
         const category = post.category || 'general';
         const categoryText = getCategoryText(category);
-        
-        // 格式化时间
         const postTime = formatTime(post.created_at);
         
         postElement.innerHTML = `
             <span class="category-tag">${categoryText}</span>
-            <a href="topic.html?id=${post.id}" class="post-title">${post.title}</a>
+            <div class="post-title">${post.title}</div>
             <p>${post.content.substring(0, 150)}${post.content.length > 150 ? '...' : ''}</p>
             <div class="post-meta">
                 <span class="post-author">${authorName}</span>
@@ -68,56 +63,18 @@ function renderPosts(posts) {
     });
 }
 
-// 加载单个帖子
-async function loadPost(postId) {
+// 新的简化发帖函数
+async function createPostSimple(title, content, category, authorName) {
     try {
-        // 获取帖子
-        const { data: post, error: postError } = await supabaseClient
-            .from('posts')
-            .select(`
-                *,
-                profiles:user_id (username)
-            `)
-            .eq('id', postId)
-            .single();
-            
-        if (postError) throw postError;
-        
-        // 获取评论
-        const { data: comments, error: commentsError } = await supabaseClient
-            .from('comments')
-            .select(`
-                *,
-                profiles:user_id (username)
-            `)
-            .eq('post_id', postId)
-            .order('created_at', { ascending: true });
-            
-        if (commentsError) throw commentsError;
-        
-        return { post, comments: comments || [] };
-    } catch (error) {
-        console.error('加载帖子错误:', error.message);
-        return { post: null, comments: [], error: error.message };
-    }
-}
-
-// 创建新帖子
-async function createPost(title, content, category = 'general') {
-    try {
-        const user = await getCurrentUser();
-        if (!user) {
-            return { success: false, error: '请先登录' };
-        }
-        
-        const { data, error } = await supabaseClient
+        const { data, error } = await window.supabaseClient
             .from('posts')
             .insert([
                 {
-                    title,
-                    content,
-                    category,
-                    user_id: user.id,
+                    title: title,
+                    content: content,
+                    category: category || 'general',
+                    author_name: authorName, // 直接存储用户名
+                    comment_count: 0,
                     created_at: new Date().toISOString()
                 }
             ])
@@ -127,37 +84,49 @@ async function createPost(title, content, category = 'general') {
         
         return { success: true, post: data[0] };
     } catch (error) {
-        console.error('创建帖子错误:', error.message);
+        console.error('发帖错误:', error.message);
         return { success: false, error: error.message };
     }
 }
 
-// 添加评论
-async function addComment(postId, content) {
+// 加载单个帖子（用于未来可能需要的详情页）
+async function loadPost(postId) {
     try {
-        const user = await getCurrentUser();
-        if (!user) {
-            return { success: false, error: '请先登录' };
-        }
+        const { data: post, error } = await window.supabaseClient
+            .from('posts')
+            .select('*')
+            .eq('id', postId)
+            .single();
+            
+        if (error) throw error;
         
-        const { data, error } = await supabaseClient
+        return { post };
+    } catch (error) {
+        console.error('加载帖子错误:', error.message);
+        return { post: null, error: error.message };
+    }
+}
+
+// 添加评论（如果需要保留评论功能）
+async function addComment(postId, content, authorName) {
+    try {
+        const { data, error } = await window.supabaseClient
             .from('comments')
             .insert([
                 {
                     post_id: postId,
-                    content,
-                    user_id: user.id,
+                    content: content,
+                    author_name: authorName, // 直接存储评论者名字
                     created_at: new Date().toISOString()
                 }
-            ])
-            .select();
+            ]);
             
         if (error) throw error;
         
-        // 更新帖子评论数
+        // 更新评论计数
         await updateCommentCount(postId);
         
-        return { success: true, comment: data[0] };
+        return { success: true };
     } catch (error) {
         console.error('添加评论错误:', error.message);
         return { success: false, error: error.message };
@@ -167,23 +136,15 @@ async function addComment(postId, content) {
 // 更新评论数
 async function updateCommentCount(postId) {
     try {
-        // 获取当前评论数
-        const { count, error: countError } = await supabaseClient
+        const { count } = await window.supabaseClient
             .from('comments')
             .select('*', { count: 'exact', head: true })
             .eq('post_id', postId);
             
-        if (countError) throw countError;
-        
-        // 更新帖子评论数
-        const { error: updateError } = await supabaseClient
+        await window.supabaseClient
             .from('posts')
             .update({ comment_count: count })
             .eq('id', postId);
-            
-        if (updateError) throw updateError;
-        
-        return { success: true };
     } catch (error) {
         console.error('更新评论数错误:', error.message);
     }
@@ -197,7 +158,6 @@ function getCategoryText(category) {
         'help': '求助问答',
         'feedback': '反馈建议'
     };
-    
     return categories[category] || category;
 }
 
@@ -221,10 +181,10 @@ function formatTime(timestamp) {
     }
 }
 
-// 导出函数供其他文件使用
+// 导出函数
 window.loadPosts = loadPosts;
 window.loadPost = loadPost;
-window.createPost = createPost;
+window.createPostSimple = createPostSimple;
 window.addComment = addComment;
 window.getCategoryText = getCategoryText;
 window.formatTime = formatTime;
