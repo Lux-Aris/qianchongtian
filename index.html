@@ -3,28 +3,28 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>静态API论坛</title>
+    <title>内部技术论坛</title>
     <link rel="stylesheet" href="css/style.css">
     <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
 </head>
 <body>
-    <!-- 导航栏 -->
+    <!-- 修改导航栏 -->
     <nav class="navbar">
-        <a href="index.html" class="logo">API论坛</a>
+        <a href="index.html" class="logo">内部技术论坛</a>
         <div class="nav-links">
             <a href="index.html" class="nav-link">首页</a>
             <a href="create.html" class="nav-link">发帖</a>
-            <div class="user-info" id="userInfo">
-                <a href="login.html" class="nav-link">登录/注册</a>
+            <!-- 移除用户登录入口，改为简单标识 -->
+            <div class="user-info">
+                <span>内部使用</span>
             </div>
         </div>
     </nav>
 
-    <!-- 主要内容 -->
     <div class="container">
         <div class="card">
-            <h1>欢迎来到静态API论坛</h1>
-            <p>这是一个完全静态的网页论坛，使用Supabase作为后端API服务。</p>
+            <h1>内部技术论坛</h1>
+            <p>欢迎！在这里可以自由交流技术问题。</p>
             <a href="create.html" class="btn" style="margin-top: 1rem;">发布新帖子</a>
         </div>
 
@@ -36,7 +36,6 @@
                 <button class="category-tag" data-category="general">综合讨论</button>
                 <button class="category-tag" data-category="tech">技术交流</button>
                 <button class="category-tag" data-category="help">求助问答</button>
-                <button class="category-tag" data-category="feedback">反馈建议</button>
             </div>
         </div>
 
@@ -52,31 +51,20 @@
 
     <!-- 脚本 -->
     <script src="js/supabase.js"></script>
-    <script src="js/auth.js"></script>
-    <script src="js/forum.js"></script>
-    <script src="js/ui.js"></script>
+    <script src="js/forum.js"></script> <!-- 注意：不再引入 auth.js -->
     
     <script>
-        // 页面加载完成后执行
         document.addEventListener('DOMContentLoaded', async function() {
-            // 检查用户登录状态
-            await checkAuth();
-            
             // 加载帖子
             await loadPosts();
             
             // 设置分类筛选事件
             document.querySelectorAll('.category-tag').forEach(button => {
                 button.addEventListener('click', async function() {
-                    // 移除其他按钮的active类
                     document.querySelectorAll('.category-tag').forEach(btn => {
                         btn.classList.remove('active');
                     });
-                    
-                    // 给当前按钮添加active类
                     this.classList.add('active');
-                    
-                    // 重新加载帖子
                     const category = this.getAttribute('data-category');
                     await loadPosts(category === 'all' ? null : category);
                 });
